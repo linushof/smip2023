@@ -1,0 +1,16 @@
+---
+title: "SMiP 2023"
+subtitle: "Notes"
+format: html
+editor: visual
+---
+
+# Day 1
+
+-   *Model application*: Taking an existing model, and apply it to some data as a measurement tool
+-   *Model comparison*: quantitative focus
+-   *Model evaluation*: qualitative focus
+-   *Model development*: Less agreed upon what development should look like
+
+
+
