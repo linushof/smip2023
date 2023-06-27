@@ -1,5 +1,8 @@
 pacman::p_load("rtdists", "tidyverse")
 
+
+# Sessio 1
+
 # noisy evidence accumulation 
 
 iter <- 1000
@@ -208,4 +211,102 @@ rt2 %>% group_by(response) %>% summarise(mrt = mean(rt))
 
 rt3 <- rdiffusion(1000, a=2, v=3, t0=0.5, d=0, sz=0, sv=0, st0=0)
 rt3 %>% group_by(response) %>% summarise(mrt = mean(rt))
+
+
+# solution 
+
+N=10000
+ter=0.3
+
+
+allV=seq(0,3,0.2)
+allA=seq(0.2,3,0.2)
+
+MCRT=array(NA,c(length(allV),length(allA)))
+MERT=array(NA,c(length(allV),length(allA)))
+ErrorProp=array(NA,c(length(allV),length(allA)))
+
+for (vIndex in 1:length(allV)) {
+  for (aIndex in 1:length(allA)) {
+    v=allV[vIndex]
+    a=allA[aIndex]
+    tmp=rdiffusion(n=N,a=a,v=v,t0=ter)
+    MCRT[vIndex,aIndex]=mean(tmp$rt[tmp$response=="upper"])
+    MERT[vIndex,aIndex]=mean(tmp$rt[tmp$response=="lower"])
+    ErrorProp[vIndex,aIndex]=mean(tmp$response=="lower")
+  }
+}
+
+plot(MCRT,MERT,xlim=c(0.3,1.5),ylim=c(0.3,1.5),pch=16)
+lines(x=c(0,100),y=c(0,100),col="red")
+
+plot(allV,MCRT[,1]-MERT[,1],xlim=c(-0.5,3.5),ylim=c(-0.3,0.3),xlab="v",ylab="MRT Difference",pch=16)
+for (i in 2:length(allA)) points(allV,MCRT[,i]-MERT[,i],pch=16)
+abline(h=0,col="red")
+
+plot(allA,MCRT[1,]-MERT[1,],xlim=c(0,3.2),ylim=c(-0.3,0.3),xlab="a",ylab="MRT Difference",pch=16)
+for (i in 2:length(allV)) points(allA,MCRT[i,]-MERT[i,],pch=16)
+abline(h=0,col="red")
+
+plot(ErrorProp,MCRT-MERT,xlim=c(0,1),ylim=c(-0.3,0.3),xlab="Error Proportion",ylab="MRT Difference",pch=16)
+abline(h=0,col="red")
+
+# Session 2
+
+logLikelihoodFunction=function(parameters, # parameters that should be fitted/optimized
+                               parameterNames,
+                               rt,
+                               resp) {
+  
+  names(parameters) = parameterNames
+  
+  a = parameters["a"]
+  v = parameters["v"]
+  t0 = parameters["t0"]
+  
+  #Q: why logs
+  #Q: why pmax and 1e-10
+  out = sum(log(pmax( #pmax guards against -Inf likelihoods (if lh below 1e-10, set to 1e-10)
+    ddiffusion(rt = rt, response = resp, # ddiffusion gives the likelihood for a certain parameter combination
+               a = a, v = v, t0 = t0, 
+               s = 0.1), 1e-10)))
+  
+  #Q: why negative?
+  -out
+  
+}
+
+#read in the data
+dat = read.table(file = 'data/yo_dat.txt', header = T)
+
+#here we add 1 because the objective function needs the responses to be either 'upper' and 'lower' or 1 and 2
+responses = dat$choice + 1
+dat = cbind(dat, responses)
+
+#see how the likelihood function works
+logLikelihoodFunction(parameters = c(0.3,0.2,0.2), 
+                      parameterNames = c("a","v","t0"), 
+                      rt = dat$rt,
+                      resp = responses)
+
+#Q: What are we going to do with this?
+
+#starting parameters
+startPar = c(0.2,0.2,0.2)
+parameterNames = c('a','v','t0')
+#optimise to find the best fitting parameters
+outs = optim(par = startPar, logLikelihoodFunction, 
+             parameterNames = parameterNames, 
+             rt = dat$rt, 
+             resp = dat$responses)
+
+fittedPars = c(outs$par[1], outs$par[2], outs$par[3])
+
+#Q: What's dumb about what we just did?
+
+#Break up the data by condition
+
+#Break up the data by subject and fit all the individuals separately
+
+#compare the older and younger individuals
 
