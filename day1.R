@@ -269,10 +269,10 @@ logLikelihoodFunction=function(parameters, # parameters that should be fitted/op
   out = sum(log(pmax( #pmax guards against -Inf likelihoods (if lh below 1e-10, set to 1e-10)
     ddiffusion(rt = rt, response = resp, # ddiffusion gives the likelihood for a certain parameter combination
                a = a, v = v, t0 = t0, 
-               s = 0.1), 1e-10)))
+               s = 0.1), 1e-10))) # s is a scaling parameter (diffusion constant)
   
   #Q: why negative?
-  -out
+  -out # optimizers usually minimize
   
 }
 
@@ -282,6 +282,7 @@ dat = read.table(file = 'data/yo_dat.txt', header = T)
 #here we add 1 because the objective function needs the responses to be either 'upper' and 'lower' or 1 and 2
 responses = dat$choice + 1
 dat = cbind(dat, responses)
+hist(dat$rt)
 
 #see how the likelihood function works
 logLikelihoodFunction(parameters = c(0.3,0.2,0.2), 
@@ -295,12 +296,22 @@ logLikelihoodFunction(parameters = c(0.3,0.2,0.2),
 startPar = c(0.2,0.2,0.2)
 parameterNames = c('a','v','t0')
 #optimise to find the best fitting parameters
+# optim = simplex
 outs = optim(par = startPar, logLikelihoodFunction, 
              parameterNames = parameterNames, 
-             rt = dat$rt, 
+             rt = dat$rt,
              resp = dat$responses)
 
 fittedPars = c(outs$par[1], outs$par[2], outs$par[3])
+options(scipen =999)
+round(fittedPars, 4)
+
+# fit data separately for conditions
+outs = optim(par = startPar, logLikelihoodFunction, 
+             parameterNames = parameterNames, 
+             rt = dat$rt[dat$conds == 2], 
+             resp = dat$responses)
+
 
 #Q: What's dumb about what we just did?
 
@@ -310,3 +321,72 @@ fittedPars = c(outs$par[1], outs$par[2], outs$par[3])
 
 #compare the older and younger individuals
 
+
+
+# fit data separately for condition
+
+
+N_sub <- length(unique(dat$subjs))
+params_sub <- vector("list", N_sub)
+params_sub
+N_cond <- 2
+params_cond <- vector("list", N_cond)
+
+for(cond in 1:2){ 
+  
+  for(sub in seq_along(unique(dat$subjs))){ 
+  
+outs = optim(par = startPar, logLikelihoodFunction, 
+             parameterNames = parameterNames, 
+             rt = dat$rt[dat$conds == cond & dat$subjs == sub], 
+             resp = dat$responses[dat$conds == cond & dat$subjs == sub])
+
+params_sub[[sub]] = tibble(parameter = c("a", "v", "t0"), 
+                       value = outs$par,
+                       subject = sub, 
+                       condition = cond)
+  }
+  params_sub_df <- bind_rows(params_sub) %>% pivot_wider(names_from = "parameter")
+  params_cond[[cond]] <- params_sub_df
+}
+params_cond_df <- bind_rows(params_cond)
+params_cond_df %>% View()
+
+params_cond_df
+
+## MCMC sampler  
+
+# simulate data
+dat <- rnorm(1000, 1, 2)
+dat
+# sampler 
+
+mcmc <- function(data, iter, burnin, start, chains){ 
+  
+  posterior <- vector("numeric", iter) # vector for posteriors samples
+  posterior[1] <- start # starting value
+  
+  for(i in 2:iter){ 
+  
+  prop_mean <- posterior[i-1] + rnorm(1, 0, .5)
+  
+  # check likelihood for proposal
+  lh_prop <- sum(log(dnorm(data, mean = prop_mean, 2)))
+  lh_last <- sum(log(dnorm(data, mean = posterior[i-1], 2)))
+  
+  # accept or not
+  
+  if(lh_prop > lh_last){ 
+    posterior[i] <- prop_mean
+    } else{
+      prob_accept <-  exp(lh_prop - lh_last) 
+      posterior[i] <- sample(c(prop_mean, posterior[i-1]), 1, prob = c(prob_accept, (1-prob_accept)))
+      }
+  }
+return(posterior)
+}
+
+
+samples <- mcmc(data=dat, iter = 10000, burnin = 0, start = 2)
+samples
+hist(samples, breaks = 30)
