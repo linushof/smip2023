@@ -7,10 +7,73 @@ editor: visual
 
 # Day 1
 
--   *Model application*: Taking an existing model, and apply it to some data as a measurement tool
+## Intro
+
+Reasons for modeling
+
+-   *Model application*: Taking an existing model, and apply it to some data as a measurement tool (selective influence approach)
 -   *Model comparison*: quantitative focus
 -   *Model evaluation*: qualitative focus
 -   *Model development*: Less agreed upon what development should look like
 
+## Parameters
+
+Role of parameters
+
+-   In cognitive models, parameters, by virtue of the model, have a certain meaning (i.e., we assume their meaning)
+
+-   Parameters as measures of latent variables
+
+# Day 2
+
+## Making conclusions with posteriors
+
+-   in general: Just plot the posteriors and look at them
+
+-   structured individual differences (hierarchical modeling): assume participants knowledge has some consistent structure, e.g., $\theta_i \sim N(\mu_{\theta}, \sigma_{\theta})$
+
+-   for reporting group-level information, report group-level hyperparameters, rather than means over the indeividual posteriors. Taking the mean over the individual parameters re-introduces the assumption that all individuals are the same.
+
+-   posterior distribution of difference: when comparing groups, take the difference between the MCMC samples (i.e., for each iteration of MCMC, you take the difference between the samples)
+
+-   work out the proportion that falls below / above 0. (heuristic: The larger the proportion that falls below/above 0, the more likely should the difference be)
+
+ROPE method: (1) Define a region of practical equivalence (ROPE) around a difference of zero; (2) what proportion of the posterior of the difference falls in the ROPE
+
+## Bias-Variance Trade-off
+
+-   usually we add more parameters to a model to make the model more accurate
+    -   theories are systematically wrong
+    -   further developing a theory (and translating it into a mathematical model) tends to increase the number of parameters\
+-   however, adding parameters to a model makes it more flexible
+    -   can produce more data points
+        -   capture non-systematic trends in data
+        -   not reproduced in subsequent data sets
+    -   can produce any given data pattern with more parameter values
+        -   more parameter values (combination thereof) are viable
+        -   introduces greater uncertainty
+-   Trade-off between being wrong with being certain/reliable
+-   when doing measurements, simplicitly is the way to go (simplicity leads to more robust measurements/estimates)
 
 
+## Model selection and complexity 
+
+- idea behind overfitting is that samples of data are inherently noisy
+- Methods that focus on correcting for overfitting 
+    - AIC (favors more complex models the more data there is)
+    - DIC
+    - WAIC
+    - Cross-Validation 
+    
+- Methods that focus on correcting flexibility
+    - BIC (penalty scales with the data)
+    - Bayes factors  
+    
+    
+    
+
+
+
+
+
+- 
