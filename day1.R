@@ -1,4 +1,4 @@
-pacman::p_load("rtdists", "tidyverse")
+pacman::p_load("rtdists", "tidyverse", "msm")
 
 
 # Sessio 1
@@ -354,11 +354,17 @@ params_cond_df %>% View()
 
 params_cond_df
 
+
+
+
 ## MCMC sampler  
 
+# own solution 
+
 # simulate data
-dat <- rnorm(1000, 1, 2)
+dat <- rnorm(1000, 2, 2)
 dat
+
 # sampler 
 
 mcmc <- function(data, iter, burnin, start, chains){ 
@@ -386,7 +392,358 @@ mcmc <- function(data, iter, burnin, start, chains){
 return(posterior)
 }
 
-
 samples <- mcmc(data=dat, iter = 10000, burnin = 0, start = 2)
 samples
 hist(samples, breaks = 30)
+
+
+# instructor solution 1 parameter
+
+rm(list=ls())
+
+
+# Step 1: A model with a likelihood function
+
+logLikelihoodFunction=function(x,mean) {
+  sum(log(dnorm(x,mean,fixedSD)))
+}
+
+
+# Step 2: Data
+
+fixedSD=2
+generatingMean=1
+
+data=rnorm(1000,generatingMean,fixedSD)
+
+
+# Step 3: Tuning parameters
+
+iterations=5000
+burnin=2000
+chains=12
+
+jumpSD=0.5
+
+makeJump=function(n) {
+  rnorm(n,0,jumpSD)
+}
+
+
+# Step 4: Storage
+
+theta=array(NA,c(chains,iterations))
+weight=rep(-Inf,chains)
+
+
+# Step 5: Reasonable starting values
+
+for (j in 1:chains) {
+  while(weight[j]==-Inf) {
+    theta[j,1]=rnorm(1,0,3)
+    weight[j]=logLikelihoodFunction(data,theta[j,1])
+  }
+}
+
+
+# Step 6: Iterative process
+
+for (i in 2:iterations) {
+  for (j in 1:chains) {
+    oldParam=theta[j,i-1]
+    oldWeight=weight[j]
+    newParam=oldParam+makeJump(1)
+    newWeight=logLikelihoodFunction(data,newParam)
+    if(exp(newWeight-oldWeight) > runif(1)) {
+      theta[j,i]=newParam
+      weight[j]=newWeight
+    } else {
+      theta[j,i]=oldParam
+      weight[j]=oldWeight
+    }
+  }
+}
+
+
+hist(theta[,burnin:iterations], breaks = 30)
+
+
+
+# instructor solution 2 parameters 
+
+
+rm(list=ls())
+
+
+
+# Step 1: A model with a likelihood function
+
+logLikelihoodFunction=function(x,mean,sd) {
+  sum(log(dnorm(x,mean,sd)))
+}
+
+parameters=c("mean","sd")
+npars=length(parameters)
+
+
+# Step 2: Data
+
+generatingMean=1
+generatingSD=2
+
+data=rnorm(1000,generatingMean,generatingSD)
+
+
+# Step 3: Tuning parameters
+
+iterations=5000
+burnin=2000
+chains=12
+
+jumpSD=0.5
+
+makeJump=function(n) {
+  rnorm(n,0,jumpSD)
+}
+
+
+# Step 4: Storage
+
+theta=array(NA,c(chains,npars,iterations))
+colnames(theta)=parameters
+weight=rep(-Inf,chains)
+
+
+# Step 5: Reasonable starting values
+
+for (j in 1:chains) {
+  while(weight[j]==-Inf) {
+    theta[j,"mean",1]=rnorm(1,0,3)
+    theta[j,"sd",1]=rtnorm(1,0,3,0,Inf)
+    weight[j]=logLikelihoodFunction(data,theta[j,"mean",1],theta[j,"sd",1])
+  }
+}
+
+
+# Step 6: Iterative process
+
+for (i in 2:iterations) {
+  for (j in 1:chains) {
+    oldParams=theta[j,,i-1]
+    oldWeight=weight[j]
+    newParams=oldParams+makeJump(npars)
+    if (newParams[2]<0) {
+      theta[j,,i]=oldParams
+      weight[j]=oldWeight
+    } else {
+      newWeight=logLikelihoodFunction(data,newParams[1],newParams[2])
+      if(exp(newWeight-oldWeight) > runif(1)) {
+        theta[j,,i]=newParams
+        weight[j]=newWeight
+      } else {
+        theta[j,,i]=oldParams
+        weight[j]=oldWeight
+      }
+    }
+  }
+}
+
+
+hist(theta[,1,burnin:iterations])
+hist(theta[,2,burnin:iterations])
+
+
+#step 3 priors
+
+rm(list=ls())
+library(msm)
+
+
+# Step 1: A model with a likelihood function
+
+logLikelihoodFunction=function(x,mean,sd) {
+  sum(log(dnorm(x,mean,sd)))
+}
+
+logPriorMean=function(x){
+  sum(log(dnorm(x,0,3)))
+}
+
+logPriorSD=function(x){
+  sum(log(dgamma(x,1,1)))
+}
+
+parameters=c("mean","sd")
+npars=length(parameters)
+
+
+# Step 2: Data
+
+generatingMean=1
+generatingSD=2
+
+data=rnorm(1000,generatingMean,generatingSD)
+
+
+# Step 3: Tuning parameters
+
+iterations=5000
+burnin=2000
+chains=12
+
+jumpSD=0.5
+
+makeJump=function(n) {
+  rnorm(n,0,jumpSD)
+}
+
+
+# Step 4: Storage
+
+theta=array(NA,c(chains,npars,iterations))
+colnames(theta)=parameters
+weight=rep(-Inf,chains)
+
+
+# Step 5: Reasonable starting values
+
+for (j in 1:chains) {
+  while(weight[j]==-Inf) {
+    theta[j,"mean",1]=rnorm(1,0,3)
+    theta[j,"sd",1]=rtnorm(1,0,3,0,Inf)
+    weight[j]=logLikelihoodFunction(data,theta[j,"mean",1],theta[j,"sd",1]) +
+      logPriorMean(theta[j,"mean",1]) +
+      logPriorSD(theta[j,"sd",1])
+  }
+}
+
+
+# Step 6: Iterative process
+
+for (i in 2:iterations) {
+  for (j in 1:chains) {
+    oldParams=theta[j,,i-1]
+    oldWeight=weight[j]
+    newParams=oldParams+makeJump(npars)
+    if (newParams[2]<0) {
+      theta[j,,i]=oldParams
+      weight[j]=oldWeight
+    } else {
+      newWeight=logLikelihoodFunction(data,newParams[1],newParams[2]) +
+        logPriorMean(newParams[1]) +
+        logPriorSD(newParams[2])
+      if(exp(newWeight-oldWeight) > runif(1)) {
+        theta[j,,i]=newParams
+        weight[j]=newWeight
+      } else {
+        theta[j,,i]=oldParams
+        weight[j]=oldWeight
+      }
+    }
+  }
+}
+
+
+hist(theta[,1,burnin:iterations])
+hist(theta[,2,burnin:iterations])
+
+
+# use differential evolution algorithm 
+
+
+rm(list=ls())
+library(msm)
+
+
+# Step 1: A model with a likelihood function
+
+logLikelihoodFunction=function(x,mean,sd) {
+  sum(log(dnorm(x,mean,sd)))
+}
+
+logPriorMean=function(x){
+  sum(log(dnorm(x,0,3)))
+}
+
+logPriorSD=function(x){
+  sum(log(dgamma(x,1,1)))
+}
+
+parameters=c("mean","sd")
+npars=length(parameters)
+
+
+# Step 2: Data
+
+generatingMean=1
+generatingSD=2
+
+data=rnorm(1000,generatingMean,generatingSD)
+
+
+# Step 3: Tuning parameters
+
+iterations=5000
+burnin=2000
+chains=12
+
+# DE jumps
+# jumpSD=0.5
+
+# makeJump=function(n) {
+  
+#  rnorm(n,0,jumpSD)
+  
+#}
+
+
+# Step 4: Storage
+
+theta=array(NA,c(chains,npars,iterations))
+colnames(theta)=parameters
+weight=rep(-Inf,chains)
+
+
+# Step 5: Reasonable starting values
+
+for (j in 1:chains) {
+  while(weight[j]==-Inf) {
+    theta[j,"mean",1]=rnorm(1,0,3)
+    theta[j,"sd",1]=rtnorm(1,0,3,0,Inf)
+    weight[j]=logLikelihoodFunction(data,theta[j,"mean",1],theta[j,"sd",1]) +
+      logPriorMean(theta[j,"mean",1]) +
+      logPriorSD(theta[j,"sd",1])
+  }
+}
+
+
+# Step 6: Iterative process
+
+for (i in 2:iterations) {
+  for (j in 1:chains) {
+    oldParams=theta[j,,i-1]
+    oldWeight=weight[j]
+    newMean = oldParams[1] + diff(sample(theta[-j,"mean",i-1], 2)) # CAVE: Samples of mean and sd can be drawn from different pairs
+    newSd = oldParams[2] + diff(sample(theta[-j,"sd",i-1], 2)) # CAVE: Samples of mean and sd can be drawn from different pairs
+    newParams = c(newMean, newSd)
+    if (newParams[2]<0) {
+      theta[j,,i]=oldParams
+      weight[j]=oldWeight
+    } else {
+      newWeight=logLikelihoodFunction(data,newParams[1],newParams[2]) +
+        logPriorMean(newParams[1]) +
+        logPriorSD(newParams[2])
+      if(exp(newWeight-oldWeight) > runif(1)) {
+        theta[j,,i]=newParams
+        weight[j]=newWeight
+      } else {
+        theta[j,,i]=oldParams
+        weight[j]=oldWeight
+      }
+    }
+  }
+}
+
+
+hist(theta[,1,burnin:iterations])
+hist(theta[,2,burnin:iterations])
