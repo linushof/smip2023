@@ -117,6 +117,7 @@ cat("Mean Error RT: ",mean(tmp1$rt[tmp1$resp==1]),"\n")
 N=10000
 ter=0.3
 sv = 1.8
+sz = .5
 
 allV=seq(0,3,0.2)
 allA=seq(0.2,3,0.2)
@@ -125,6 +126,7 @@ MCRT=array(NA,c(length(allV),length(allA)))
 MERT=array(NA,c(length(allV),length(allA)))
 ErrorProp=array(NA,c(length(allV),length(allA)))
 
+# inter-trial variability for drift rate
 for (vIndex in 1:length(allV)) {
   for (aIndex in 1:length(allA)) {
     v=allV[vIndex]
@@ -135,6 +137,30 @@ for (vIndex in 1:length(allV)) {
     ErrorProp[vIndex,aIndex]=mean(tmp$response=="lower")
   }
 }
+
+
+# inter-trial variability for drift rate and starting point
+
+N=10000
+ter=0.3
+sv = 1.8
+sz = .5
+
+V = 1.8
+A = 1
+
+for (vIndex in 1:length(allV)) {
+  for (aIndex in 1:length(allA)) {
+    v=V
+    a=A
+    tmp=rdiffusion(n=N,a=a,v=v,t0=ter, sv = sv, sz = sz )
+    MCRT[vIndex,aIndex]=mean(tmp$rt[tmp$response=="upper"])
+    MERT[vIndex,aIndex]=mean(tmp$rt[tmp$response=="lower"])
+    ErrorProp[vIndex,aIndex]=mean(tmp$response=="lower")
+  }
+}
+
+
 
 plot(MCRT,MERT,xlim=c(0.3,1.5),ylim=c(0.3,1.5),pch=16)
 lines(x=c(0,100),y=c(0,100),col="red")
