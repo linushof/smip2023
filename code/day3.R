@@ -177,6 +177,234 @@ plot(ErrorProp,MCRT-MERT,xlim=c(0,1),ylim=c(-0.3,0.3),xlab="Error Proportion",yl
 abline(h=0,col="red")
 
 
+# qualitative predictions 
 
+logLikelihoodFunction=function(parameters,parameterNames,
+                               rt,resp,conditions) {
+  
+  nconditions = length(unique(conditions))
+  
+  names(parameters) = parameterNames
+  out=0
+  
+  a = parameters[grep("a",parameterNames)]
+  if (length(a) < nconditions) a = rep(a, nconditions)
+  v = parameters[grep("v",parameterNames)]
+  if (length(v) < nconditions) v = rep(v, nconditions)
+  t0 = parameters[grep("t0",parameterNames)]
+  if (length(t0) < nconditions) t0 = rep(t0, nconditions)
+  
+  for (i in 1:nconditions){
+    out = out + sum(log(pmax(
+      ddiffusion(rt = rt[conditions == i], response = resp[conditions == i],
+                 a = a, v = v[i], t0 = t0, 
+                 s = 0.1), 1e-10)))
+  }
+  -out
+  
+}
+
+#Read in the new data set
+dat = read.table(file = 'data/dat_conds.txt', header = T)
+responses = dat$choice + 1
+dat = cbind(dat, responses)
+nsubjs = length(unique(dat$subjs))
+
+#Using code from other sessions, fit this data set letting drift rate vary across conditions
+startPar = c(0.1, 0.1, 0.2, 0.3, 0.15)
+parameterNames = c("a", "v1", "v2", "v3", "t0")
+
+####how would you change this to let a different parameter vary across conditions?
+fittedPars = array(NA, dim = c(5, nsubjs))
+for (j in 1:nsubjs){
+  print(j)
+  #where does the conditions variable play its part?
+  tmpdat = dat[dat$subjs == j & !is.na(dat$rt), ]
+  outs = optim(par = startPar, logLikelihoodFunction, 
+               parameterNames = parameterNames, 
+               rt = tmpdat$rt, 
+               resp = tmpdat$responses,
+               conditions = tmpdat$conds)
+    
+    fittedPars[,j] = outs$par
+  }
+
+fittedPars
+mns = apply(fittedPars, 1, mean)
+mns
+sds = apply(fittedPars, 1, sd)
+sds
+
+#Does drift rate vary across conditions?
+
+#look at fit
+nconditions = length(unique(dat$conds))
+
+#have to choose what to look at - can start simple
+obsChoiceProp = tapply(dat$responses == 2, list(dat$conds, dat$subjs), mean, na.rm =T)
+obsUpMRT = tapply(dat$rt[dat$responses == 2], list(dat$conds[dat$responses == 2], dat$subjs[dat$responses == 2]), mean, na.rm = T)
+obsLowMRT = tapply(dat$rt[dat$responses == 1], list(dat$conds[dat$responses == 1], dat$subjs[dat$responses == 1]), mean, na.rm = T)
+
+matplot(x = 1:3, y = obsChoiceProp, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0,1))
+matplot(x = 1:3, y = obsUpMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+matplot(x = 1:3, y = obsLowMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+
+
+#now get the same predicted data from the model
+nsims = 1000
+predUpMRT = predLowMRT = predChoiceProp = array(NA, dim = c(nconditions, nsubjs))
+
+for (j in 1:nsubjs){
+  tmpPars = fittedPars[,j]
+  names(tmpPars) = parameterNames
+  
+  a = tmpPars[grep("a",parameterNames)]
+  if (length(a) < nconditions) a = rep(a, nconditions)
+  v = tmpPars[grep("v",parameterNames)]
+  if (length(v) < nconditions) v = rep(v, nconditions)
+  t0 = tmpPars[grep("t0",parameterNames)]
+  if (length(t0) < nconditions) t0 = rep(t0, nconditions)
+  
+  #You need to put in the code to simulate from the model, and create the predicted data patterns
+  
+}
+
+matplot(x = 1:3 - 0.1, y = obsChoiceProp, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0,1))
+matpoints(x = 1:3 + 0.1, y = predChoiceProp, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsChoiceProp - predChoiceProp, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+matplot(x = 1:3 - 0.1, y = obsUpMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+matpoints(x = 1:3 + 0.1, y = predUpMRT, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsUpMRT - predUpMRT, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+matplot(x = 1:3 - 0.1, y = obslowMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+matpoints(x = 1:3 + 0.1, y = predLowMRT, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsLowMRT - predLowMRT, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+
+
+### Try a different model ###
+
+#change the code above so that a model with only boundary separation varies across conditions
+
+#how does that do?
+
+### Let's introduce start-point bias ###
+
+logLikelihoodFunction=function(parameters,parameterNames,
+                               rt,resp,conditions) {
+  
+  nconditions = length(unique(conditions))
+  
+  names(parameters) = parameterNames
+  out=0
+  
+  a = parameters[grep("a",parameterNames)]
+  if (length(a) < nconditions) a = rep(a, nconditions)
+  v = parameters[grep("v",parameterNames)]
+  if (length(v) < nconditions) v = rep(v, nconditions)
+  t0 = parameters[grep("t0",parameterNames)]
+  if (length(t0) < nconditions) t0 = rep(t0, nconditions)
+  z = parameters[grep("z",parameterNames)]
+  if (length(z) < nconditions) z = rep(z, nconditions)
+  
+  for (i in 1:nconditions){
+    out = out + sum(log(pmax(
+      ddiffusion(rt = rt[conditions == i], response = resp[conditions == i],
+                 a = a[i], v = v[i], t0 = t0[i], z = z[i] * a[i], 
+                 s = 0.1), 1e-10)))
+  }
+  -out
+  
+}
+
+#going to have to fix this
+startPar = c(0.05, 0.1, 0.15, 0.2, 0.15)
+parameterNames = c("a1", "a2", "a3", "v", "t0")
+
+fittedPars = array(NA, dim = c(5, nsubjs))
+for (j in 1:nsubjs){
+  print(j)
+  
+  tmpdat = dat[dat$subjs == j & !is.na(dat$rt), ]
+  outs = optim(par = startPar, logLikelihoodFunction, 
+               parameterNames = parameterNames, 
+               rt = tmpdat$rt, 
+               resp = tmpdat$responses,
+               conditions = tmpdat$conds)
+  
+  fittedPars[,j] = outs$par
+}
+
+mns = apply(fittedPars, 1, mean)
+sds = apply(fittedPars, 1, sd)
+
+par(mar = c(4,4,1,1))
+plot(mns, ylim = c(-1,1), axes = F, xlab = '', ylab = '')
+axis(side = 1, at = 1:6, c('a1','a2','a3','v','t0','z')); axis(side = 2); box()
+arrows(x0 = 1:6, y0 = mns-sds/sqrt(nsubjs), y1 = mns + sds/sqrt(nsubjs), code = 3, angle = 90, length = 0.05)
+
+#check the predicted data patterns
+for (j in 1:nsubjs){
+  tmpPars = fittedPars[,j]
+  names(tmpPars) = parameterNames
+  
+  a = tmpPars[grep("a",parameterNames)]
+  if (length(a) < nconditions) a = rep(a, nconditions)
+  v = tmpPars[grep("v",parameterNames)]
+  if (length(v) < nconditions) v = rep(v, nconditions)
+  t0 = tmpPars[grep("t0",parameterNames)]
+  if (length(t0) < nconditions) t0 = rep(t0, nconditions)
+  z = tmpPars[grep("z",parameterNames)]
+  if (length(z) < nconditions) z = rep(z, nconditions)
+  
+  #simulate from the model and calculate the needed data patterns  
+  
+}
+
+matplot(x = 1:3 - 0.1, y = predChoiceProp, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0,1))
+matpoints(x = 1:3 + 0.1, y = obsChoiceProp, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsChoiceProp - predChoiceProp, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+matplot(x = 1:3 - 0.1, y = predUpMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+matpoints(x = 1:3 + 0.1, y = obsUpMRT, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsUpMRT - predUpMRT, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+matplot(x = 1:3 - 0.1, y = predLowMRT, pch = 1, col = 1, xlim = c(0.5,3.5), ylim = c(0.3,2.5))
+matpoints(x = 1:3 + 0.1, y = obsLowMRT, pch = 16,col = rgb(0,0,0,0.5))
+matplot(obsLowMRT - predLowMRT, pch = 16, col = rgb(0,0,0,0.3))
+abline(h = 0)
+
+
+#################################
+# can always check if drift changes if both boundary and drift vary
+
+
+fittedPars = array(NA, dim = c(8, nsubjs))
+for (j in 1:nsubjs){
+  print(j)
+  
+  tmpdat = dat[dat$subjs == j & !is.na(dat$rt), ]
+  outs = optim(par = startPar, logLikelihoodFunction, 
+               parameterNames = parameterNames, 
+               rt = tmpdat$rt, 
+               resp = tmpdat$responses,
+               conditions = tmpdat$conds)
+  
+  fittedPars[,j] = outs$par
+}
+
+mns = apply(fittedPars, 1, mean)
+sds = apply(fittedPars, 1, sd)
+
+par(mar = c(4,4,1,1))
+plot(mns, ylim = c(-1,1), axes = F, xlab = '', ylab = '')
+axis(side = 1, at = 1:8, c('a1','a2','a3','v1','v2','v3','t0','z')); axis(side = 2); box()
+arrows(x0 = 1:8, y0 = mns-sds/sqrt(nsubjs), y1 = mns + sds/sqrt(nsubjs), code = 3, angle = 90, length = 0.05)
 
 
