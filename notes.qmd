@@ -69,11 +69,36 @@ ROPE method: (1) Define a region of practical equivalence (ROPE) around a differ
     - BIC (penalty scales with the data)
     - Bayes factors  
     
-    
-    
+## Bayes Factors
+
+
+$$
+\begin{align}
+  P(\theta)|y, M) &= (P(y|\theta,M) \times p(\theta|M)) / p(y|M) \\
+  p(y|M) &=  \int P(y|\theta,M) p(\theta|M) d\theta
+\end{align}
+$$
+
+Brut force numerical methods to obtain the marginal likelihood: 
+
+1. sample from prior distribution 
+2. compute likelihood for each sample combination 
+3. average over all likelihood values  
+
+
+# Predictions
+
+- QP plots: quantiles as summaries of the shape of a distribution (what is the number where x% of the distribution sit under)
+
+
+# model developments
+
+- the goal of modeling will often define the trajectory of development 
+
+- the way we learn is by finding and fixing problems with our theories and mathematical modeling helps us to do this
+
+- David Deutsch (e.g., 2011): Good theories/explanations are hard to vary
 
 
 
 
-
-- 
